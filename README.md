@@ -111,13 +111,19 @@ python demo.py
 from demo import load_engine, synthesize
 
 # Zero-shot voice cloning (base model)
-engine = load_engine(checkpoint="pretrained_models/pilot_tts.pt")
+engine = load_engine(
+    config_path="configs/infer_pilot_tts.yaml",
+    checkpoint="pretrained_models/pilot_tts.pt",
+)
 synthesize(engine, text="你好，世界！",
            prompt_wav="assert/prompt.wav",
            output_path="output/clone.wav")
 
 # Load instruct model (emotion, paralanguage, dialect)
-engine_instruct = load_engine(checkpoint="pretrained_models/pilot_tts_instruct.pt")
+engine_instruct = load_engine(
+    config_path="configs/infer_pilot_tts_instruct.yaml",
+    checkpoint="pretrained_models/pilot_tts_instruct.pt",
+)
 
 # Emotion synthesis
 synthesize(engine_instruct, text="今天天气真好啊！",
@@ -147,6 +153,7 @@ python inference.py \
 
 # Emotion synthesis (instruct model)
 python inference.py \
+    --config configs/infer_pilot_tts_instruct.yaml \
     --checkpoint pretrained_models/pilot_tts_instruct.pt \
     --prompt-wav assert/prompt.wav \
     --text "今天天气真好啊，我们去公园玩吧！" \
@@ -155,6 +162,7 @@ python inference.py \
 
 # Paralanguage (instruct model)
 python inference.py \
+    --config configs/infer_pilot_tts_instruct.yaml \
     --checkpoint pretrained_models/pilot_tts_instruct.pt \
     --prompt-wav assert/prompt.wav \
     --text "这个笑话太好笑了<|LAUGH|>我真的忍不住" \
@@ -162,6 +170,7 @@ python inference.py \
 
 # Dialect synthesis (instruct model)
 python inference.py \
+    --config configs/infer_pilot_tts_instruct.yaml \
     --checkpoint pretrained_models/pilot_tts_instruct.pt \
     --prompt-wav assert/prompt.wav \
     --text "中不中啊，咱俩一块儿去吃胡辣汤吧" \
@@ -224,7 +233,7 @@ python webui.py --port 9000
 
 ```
 pilot-tts/
-├── configs/infer.yaml           # Inference configuration
+├── configs/                     # Inference configurations (per checkpoint)
 ├── demo.py                      # Complete demo (all inference modes)
 ├── inference.py                 # CLI inference entry
 ├── webui.py                     # Gradio WebUI

@@ -103,8 +103,6 @@ class InferenceEngine:
                 sampling_temperature=inf["temperature"],
                 spk_emb=spk_emb,
                 prompt_audio=prompt_audio,
-                num_beams=inf.get("num_beams", 1),
-                length_penalty=inf.get("length_penalty", 0.0),
             )
         return codes, codes_length
 

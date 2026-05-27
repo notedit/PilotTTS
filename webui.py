@@ -189,7 +189,7 @@ body {background-color: #f5f7fb;}
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="PilotVoice WebUI")
-    parser.add_argument("--config", default="configs/infer.yaml")
+    parser.add_argument("--config", default="configs/infer_pilot_tts.yaml")
     parser.add_argument("--checkpoint", default="pretrained_models/pilot_tts.pt")
     parser.add_argument("--port", type=int, default=9000)
     parser.add_argument("--ui-only", action="store_true",

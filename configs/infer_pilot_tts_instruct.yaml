@@ -10,11 +10,11 @@ tokenizer:
   path: "tokenizer"
 
 vocoder:
-  model_dir: "pretrained_models/CosyVoice3-0.5B"
+  model_dir: "pretrained_models/Fun-CosyVoice3-0.5B"
   sample_rate: 24000
 
 spk_embedding:
-  campplus_path: "pretrained_models/CosyVoice3-0.5B/campplus.onnx"
+  campplus_path: "pretrained_models/Fun-CosyVoice3-0.5B/campplus.onnx"
 
 prompt_codecs:
   vq_root: "assert/vq"
@@ -25,6 +25,4 @@ inference:
   top_p: 0.95
   top_k: 20
   temperature: 1.0
-  num_beams: 1
-  length_penalty: 0.0
   min_output_length: 0

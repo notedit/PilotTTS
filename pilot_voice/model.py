@@ -7,7 +7,6 @@ from transformers import AutoModelForCausalLM, SeamlessM4TFeatureExtractor
 
 from .utils import make_pad_mask, build_semantic_model
 from .sampling import ras_sampling
-from .beam_search import BeamHypotheses, expand_cache, reorder_cache, cleanup_cache
 from .modules.conformer_encoder import ConformerEncoder
 from .modules.perceiver import PerceiverResampler
 
@@ -262,194 +261,6 @@ class AR(nn.Module):
 
         return tokens, token_length
 
-    @torch.inference_mode()
-    def generate_beam_search(
-        self, prompt_tokens, prompt_lengths, text_lengths,
-        num_beams=3, length_penalty=0.0, max_gen_len=4096,
-        spk_emb=None, prompt_audio=None,
-    ):
-        """Autoregressive token generation using beam search with KV-cache.
-
-        Returns the same (tokens, token_length) format as generate().
-        """
-        device = prompt_tokens.device
-        min_prompt_len = prompt_lengths.min().item()
-        max_prompt_len = prompt_lengths.max().item()
-        total_len = min(2048, max_gen_len + max_prompt_len)
-        eos_token = self.audio_tokens - 1
-        vocab_size = self.audio_tokens
-
-        tokens = torch.full((1, total_len), 0, dtype=torch.long, device=device)
-        tokens[0, :prompt_tokens.shape[1]] = prompt_tokens[0]
-
-        conds = None
-        cond_len = 0
-        if self.use_conditioning and prompt_audio is not None:
-            inputs = self.extract_features(
-                prompt_audio, sampling_rate=16000, return_tensors="pt",
-            )
-            input_features = inputs["input_features"].to(device)
-            attention_mask = inputs["attention_mask"].to(device)
-            spk_cond_emb = self._get_wav2vec_features(input_features, attention_mask)
-            conds = self._compute_conds(
-                spk_cond_emb, attention_mask, spk_emb=spk_emb,
-            )
-            cond_len = conds.size(1)
-
-        # --- Phase 1: Prefill (process entire prompt with single beam) ---
-        prompt_emb = self.ar_decoder.model.embed_tokens(tokens[:, :min_prompt_len])
-
-        if conds is not None:
-            prompt_emb = torch.cat((conds, prompt_emb), dim=1)
-            position_ids = torch.arange(
-                0, min_prompt_len + cond_len, device=device,
-            ).unsqueeze(0)
-            input_masks = torch.ones(
-                1, min_prompt_len + cond_len, dtype=torch.bool, device=device,
-            )
-        else:
-            position_ids = torch.arange(
-                0, min_prompt_len, device=device,
-            ).unsqueeze(0)
-            input_masks = torch.ones(
-                1, min_prompt_len, dtype=torch.bool, device=device,
-            )
-
-        from transformers.cache_utils import DynamicCache
-        fresh_cache = DynamicCache()
-        out = self.ar_decoder(
-            inputs_embeds=prompt_emb,
-            attention_mask=input_masks,
-            past_key_values=fresh_cache,
-            position_ids=position_ids,
-        )
-        cache = out.past_key_values
-        prefill_logits = out.logits[:, -1, :vocab_size]
-        del out
-
-        # --- Phase 2: Expand to num_beams ---
-        tokens = tokens.repeat(num_beams, 1)
-        cache = expand_cache(cache, num_beams)
-
-        beam_scores = torch.zeros(num_beams, dtype=torch.float, device=device)
-        beam_scores[1:] = -1e9
-        beam_hyps = BeamHypotheses(num_beams, length_penalty)
-
-        next_logits = prefill_logits.expand(num_beams, -1).clone()
-        last_pos = min_prompt_len - 1
-
-        # --- Phase 3: Beam search decode ---
-        for cur_pos in range(min_prompt_len, total_len):
-            next_logits[:, self.audio_tokens - 2] = float("-inf")
-            next_scores = torch.log_softmax(next_logits, dim=-1)
-            next_scores = next_scores + beam_scores[:, None]
-
-            next_scores_flat = next_scores.view(-1)
-            n_candidates = 2 * num_beams
-            top_scores, top_indices = torch.topk(
-                next_scores_flat, n_candidates,
-            )
-            b_indices = top_indices // vocab_size
-            t_indices = top_indices % vocab_size
-
-            next_beam_scores = torch.full(
-                (num_beams,), -1e9, device=device,
-            )
-            next_beam_tokens = torch.zeros(
-                num_beams, dtype=torch.long, device=device,
-            )
-            next_beam_idx = torch.zeros(
-                num_beams, dtype=torch.long, device=device,
-            )
-            beam_count = 0
-
-            for rank in range(len(top_scores)):
-                b = b_indices[rank]
-                t = t_indices[rank]
-                s = top_scores[rank]
-
-                if t.item() == eos_token:
-                    if rank >= num_beams:
-                        continue
-                    gen_len = cur_pos - min_prompt_len
-                    if gen_len > 0:
-                        gen = tokens[b, min_prompt_len:cur_pos].clone()
-                        beam_hyps.add(gen, s.item(), generated_len=gen_len)
-                else:
-                    next_beam_scores[beam_count] = s
-                    next_beam_tokens[beam_count] = t
-                    next_beam_idx[beam_count] = b
-                    beam_count += 1
-
-                if beam_count == num_beams:
-                    break
-
-            if beam_count == 0:
-                break
-
-            if beam_count < num_beams:
-                next_beam_tokens[beam_count:] = next_beam_tokens[0]
-                next_beam_idx[beam_count:] = next_beam_idx[0]
-
-            beam_scores = next_beam_scores
-            tokens = tokens[next_beam_idx]
-            tokens[:, cur_pos] = next_beam_tokens
-            cache = reorder_cache(cache, next_beam_idx)
-            last_pos = cur_pos
-
-            gen_len = cur_pos - min_prompt_len + 1
-            if beam_hyps.is_done(beam_scores.max().item(), gen_len):
-                break
-
-            token_emb = self.ar_decoder.model.embed_tokens(
-                tokens[:, cur_pos:cur_pos + 1],
-            )
-            position_ids = torch.full(
-                (num_beams, 1), cur_pos + cond_len,
-                dtype=torch.long, device=device,
-            )
-            input_masks = torch.ones(
-                num_beams, 1, dtype=torch.bool, device=device,
-            )
-            out = self.ar_decoder(
-                inputs_embeds=token_emb,
-                attention_mask=input_masks,
-                past_key_values=cache,
-                position_ids=position_ids,
-            )
-            cache = out.past_key_values
-            next_logits = out.logits[:, -1, :vocab_size]
-            del out
-
-        # --- Phase 4: Finalize ---
-        cleanup_cache(cache)
-        del cache
-        torch.cuda.empty_cache()
-
-        for i in range(num_beams):
-            gen_end = last_pos + 1
-            gen = tokens[i, min_prompt_len:gen_end].clone()
-            while len(gen) > 0 and gen[-1].item() == eos_token:
-                gen = gen[:-1]
-            gen_len = len(gen)
-            if gen_len > 0:
-                beam_hyps.add(gen, beam_scores[i].item(), generated_len=gen_len)
-
-        if len(beam_hyps) == 0:
-            result = torch.full((1, total_len), 0, dtype=torch.long, device=device)
-            result[0, :min_prompt_len] = prompt_tokens[0, :min_prompt_len]
-            return result, torch.tensor([min_prompt_len], device=device)
-
-        best_score, best_tokens = max(beam_hyps.beams, key=lambda x: x[0])
-        result = torch.full((1, total_len), 0, dtype=torch.long, device=device)
-        result[0, :min_prompt_len] = prompt_tokens[0, :min_prompt_len]
-        gen_len = len(best_tokens)
-        result[0, min_prompt_len:min_prompt_len + gen_len] = best_tokens
-        total_length = torch.tensor(
-            [min_prompt_len + gen_len], device=device,
-        )
-        return result, total_length
-
 
 class PilotVoice(nn.Module):
 
@@ -487,20 +298,12 @@ class PilotVoice(nn.Module):
         self, ar_prompt, text, text_len, proms_p=None, proms_p_len=0,
         top_k=30, top_p=1.0, sampling_temperature=1.0,
         spk_emb=None, prompt_audio=None,
-        num_beams=1, length_penalty=0.0,
     ):
-        if num_beams > 1:
-            target_ar, total_length = self.ar.generate_beam_search(
-                ar_prompt, text_len + proms_p_len, text_len,
-                num_beams=num_beams, length_penalty=length_penalty,
-                spk_emb=spk_emb, prompt_audio=prompt_audio,
-            )
-        else:
-            target_ar, total_length = self.ar.generate(
-                ar_prompt, text_len + proms_p_len, text_len,
-                top_k=top_k, top_p=top_p, temperature=sampling_temperature,
-                spk_emb=spk_emb, prompt_audio=prompt_audio,
-            )
+        target_ar, total_length = self.ar.generate(
+            ar_prompt, text_len + proms_p_len, text_len,
+            top_k=top_k, top_p=top_p, temperature=sampling_temperature,
+            spk_emb=spk_emb, prompt_audio=prompt_audio,
+        )
         bsz = target_ar.shape[0]
         ar_list = []
         for i in range(bsz):

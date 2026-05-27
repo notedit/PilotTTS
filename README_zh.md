@@ -111,13 +111,19 @@ python demo.py
 from demo import load_engine, synthesize
 
 # 零样本声音克隆（基础模型）
-engine = load_engine(checkpoint="pretrained_models/pilot_tts.pt")
+engine = load_engine(
+    config_path="configs/infer_pilot_tts.yaml",
+    checkpoint="pretrained_models/pilot_tts.pt",
+)
 synthesize(engine, text="你好，世界！",
            prompt_wav="assert/prompt.wav",
            output_path="output/clone.wav")
 
 # 加载指令模型（情感、副语言、方言）
-engine_instruct = load_engine(checkpoint="pretrained_models/pilot_tts_instruct.pt")
+engine_instruct = load_engine(
+    config_path="configs/infer_pilot_tts_instruct.yaml",
+    checkpoint="pretrained_models/pilot_tts_instruct.pt",
+)
 
 # 情感合成
 synthesize(engine_instruct, text="今天天气真好啊！",
@@ -147,6 +153,7 @@ python inference.py \
 
 # 情感合成（指令模型）
 python inference.py \
+    --config configs/infer_pilot_tts_instruct.yaml \
     --checkpoint pretrained_models/pilot_tts_instruct.pt \
     --prompt-wav assert/prompt.wav \
     --text "今天天气真好啊，我们去公园玩吧！" \
@@ -155,6 +162,7 @@ python inference.py \
 
 # 副语言（指令模型）
 python inference.py \
+    --config configs/infer_pilot_tts_instruct.yaml \
     --checkpoint pretrained_models/pilot_tts_instruct.pt \
     --prompt-wav assert/prompt.wav \
     --text "这个笑话太好笑了<|LAUGH|>我真的忍不住" \
@@ -162,6 +170,7 @@ python inference.py \
 
 # 方言合成（指令模型）
 python inference.py \
+    --config configs/infer_pilot_tts_instruct.yaml \
     --checkpoint pretrained_models/pilot_tts_instruct.pt \
     --prompt-wav assert/prompt.wav \
     --text "中不中啊，咱俩一块儿去吃胡辣汤吧" \
@@ -224,7 +233,7 @@ python webui.py --port 9000
 
 ```
 pilot-tts/
-├── configs/infer.yaml           # 推理配置
+├── configs/                     # 推理配置（按 checkpoint 区分）
 ├── demo.py                      # 完整示例（全部推理模式）
 ├── inference.py                 # 命令行推理入口
 ├── webui.py                     # Gradio WebUI

@@ -16,7 +16,7 @@ import torchaudio
 from pilot_voice.engine import InferenceEngine
 
 
-def load_engine(config_path="configs/infer.yaml", checkpoint=None, device=None):
+def load_engine(config_path="configs/infer_pilot_tts.yaml", checkpoint=None, device=None):
     with open(config_path) as f:
         config = yaml.safe_load(f)
     if checkpoint:
@@ -58,7 +58,10 @@ if __name__ == "__main__":
     print("[1] Zero-shot Voice Cloning")
     print("=" * 50)
 
-    engine = load_engine(checkpoint="pretrained_models/pilot_tts.pt")
+    engine = load_engine(
+        config_path="configs/infer_pilot_tts.yaml",
+        checkpoint="pretrained_models/pilot_tts.pt",
+    )
 
     synthesize(
         engine,
@@ -75,7 +78,10 @@ if __name__ == "__main__":
     print("[2] Emotion Synthesis (Instruct)")
     print("=" * 50)
 
-    engine_instruct = load_engine(checkpoint="pretrained_models/pilot_tts_instruct.pt")
+    engine_instruct = load_engine(
+        config_path="configs/infer_pilot_tts_instruct.yaml",
+        checkpoint="pretrained_models/pilot_tts_instruct.pt",
+    )
 
     synthesize(
         engine_instruct,
