@@ -9,13 +9,15 @@
 </p>
 
 <p align="center">
-    📑 <a href="#">Paper</a> &nbsp;|&nbsp; 🤗 <a href="https://huggingface.co/AmapVoice/PilotTTS">HuggingFace</a> &nbsp;|&nbsp; 🤖 <a href="https://www.modelscope.cn/models/AmapVoice/PilotTTS">ModelScope</a> &nbsp;|&nbsp; 🎧 <a href="https://amapvoice.github.io/PilotTTS/">Demos</a>
+
+    📑 <a href="https://arxiv.org/abs/2605.27258">Paper</a> &nbsp;|&nbsp; 🤗 <a href="https://huggingface.co/AmapVoice/PilotTTS">HuggingFace</a> &nbsp;|&nbsp; 🤖 <a href="https://www.modelscope.cn/models/AmapVoice/PilotTTS">ModelScope</a> &nbsp;|&nbsp; 🎧 <a href="https://amapvoice.github.io/PilotTTS/">Demos</a>
 </p>
 
 
 ## News 📝
 
-- **[2025.05]** Release Pilot-TTS base and instruct model weights
+
+- **[2026.05]** Release Pilot-TTS base and instruct model weights
 
 ## Highlight 🔥
 
@@ -115,6 +117,7 @@ engine = load_engine(
     config_path="configs/infer_pilot_tts.yaml",
     checkpoint="pretrained_models/pilot_tts.pt",
 )
+
 synthesize(engine, text="你好，世界！",
            prompt_wav="assert/prompt.wav",
            output_path="output/clone.wav")
@@ -263,11 +266,12 @@ pilot-tts/
 ## Citation
 
 ```bibtex
-@article{pilottts2025,
+
+@article{pilottts2026,
       title={PilotTTS: A Disciplined Modular Recipe for Competitive Speech Synthesis},
-      author={},
-      year={2025},
-      journal={arXiv preprint arXiv:xxxx.xxxxx}
+      author={Bowen Li and Shaotong Guo and Zhen Wang and Yang Xiang and Mingli Jin and Yihang Lin and Jiahui Zhao and Weibo Xiong and Dongrui Li and Keming Chen and Yunze Gao and Yuze Zhou and Zeyang Lin and Yue Liu},
+      year={2026},
+      journal={arXiv preprint arXiv:2605.27258}
 }
 ```
 

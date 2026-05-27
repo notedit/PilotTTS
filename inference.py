@@ -19,7 +19,11 @@ from pilot_voice.engine import InferenceEngine
 
 def main():
     parser = argparse.ArgumentParser(description="PilotVoice Inference")
+<<<<<<< HEAD
     parser.add_argument("--config", default="configs/infer_pilot_tts.yaml", help="YAML config file")
+=======
+    parser.add_argument("--config", default="configs/infer.yaml", help="YAML config file")
+>>>>>>> daadd44b65610aa7db03af716bc149feebc7fcfe
     parser.add_argument("--checkpoint", default="pretrained_models/pilot_tts.pt",
                         help="Model checkpoint path")
     parser.add_argument("--prompt-wav", required=True, help="Prompt audio path")

@@ -9,7 +9,7 @@
 </p>
 
 <p align="center">
-    📑 <a href="#">论文</a> &nbsp;|&nbsp; 🤗 <a href="https://huggingface.co/AmapVoice/PilotTTS">HuggingFace</a> &nbsp;|&nbsp; 🤖 <a href="https://www.modelscope.cn/models/AmapVoice/PilotTTS">ModelScope</a> &nbsp;|&nbsp; 🎧 <a href="https://amapvoice.github.io/PilotTTS/">演示样例</a>
+    📑 <a href="https://arxiv.org/abs/2605.27258">论文</a> &nbsp;|&nbsp; 🤗 <a href="https://huggingface.co/AmapVoice/PilotTTS">HuggingFace</a> &nbsp;|&nbsp; 🤖 <a href="https://www.modelscope.cn/models/AmapVoice/PilotTTS">ModelScope</a> &nbsp;|&nbsp; 🎧 <a href="https://amapvoice.github.io/PilotTTS/">演示样例</a>
 </p>
 
 
@@ -259,6 +259,18 @@ pilot-tts/
 - [Qwen3](https://github.com/QwenLM/Qwen3) — LLM 骨干网络
 - [Matcha-TTS](https://github.com/shivammehta25/Matcha-TTS) — Flow matching 框架
 - [MaskGCT](https://github.com/open-mmlab/Amphion/tree/main/models/tts/maskgct) — wav2vec2bert 特征统计
+
+
+## 引用
+
+```bibtex
+@article{pilottts2026,
+      title={PilotTTS: A Disciplined Modular Recipe for Competitive Speech Synthesis},
+      author={Bowen Li and Shaotong Guo and Zhen Wang and Yang Xiang and Mingli Jin and Yihang Lin and Jiahui Zhao and Weibo Xiong and Dongrui Li and Keming Chen and Yunze Gao and Yuze Zhou and Zeyang Lin and Yue Liu},
+      year={2026},
+      journal={arXiv preprint arXiv:2605.27258}
+}
+```
 
 ## 许可证
 
