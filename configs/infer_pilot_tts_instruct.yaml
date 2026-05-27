@@ -1,0 +1,28 @@
+language: "zh"
+
+model:
+  audio_tokens: 6563
+  pretrain_path: "pretrained_models/Qwen3-0.6B"
+  w2v_path: "pretrained_models/w2v-bert-2.0"
+  w2v_stats_path: "pretrained_models/wav2vec2bert_stats.pt"
+
+tokenizer:
+  path: "tokenizer"
+
+vocoder:
+  model_dir: "pretrained_models/Fun-CosyVoice3-0.5B"
+  sample_rate: 24000
+
+spk_embedding:
+  campplus_path: "pretrained_models/Fun-CosyVoice3-0.5B/campplus.onnx"
+
+prompt_codecs:
+  vq_root: "assert/vq"
+  wav_root: "assert/wav"
+
+inference:
+  vocab_size: 6561
+  top_p: 0.95
+  top_k: 20
+  temperature: 1.0
+  min_output_length: 0
