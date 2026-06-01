@@ -16,7 +16,7 @@
 
 ## News 📝
 
-
+- **[Coming Soon]** Expanding support for 14+ dialects, with model weights to be released soon
 - **[2026.05]** Release Pilot-TTS base and instruct model weights
 
 ## Highlight 🔥
