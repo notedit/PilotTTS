@@ -28,5 +28,5 @@ output/
 pretrained_models/
 .DS_Store
 
-
+.claude
 .claude
