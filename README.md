@@ -9,21 +9,13 @@
 </p>
 
 <p align="center">
-<<<<<<< HEAD
-
-=======
->>>>>>> 8e0dab6828b63ad1d387d1b4fabf002972c775c8
     📑 <a href="https://arxiv.org/abs/2605.27258">Paper</a> &nbsp;|&nbsp; 🤗 <a href="https://huggingface.co/AmapVoice/PilotTTS">HuggingFace</a> &nbsp;|&nbsp; 🤖 <a href="https://www.modelscope.cn/models/AmapVoice/PilotTTS">ModelScope</a> &nbsp;|&nbsp; 🎧 <a href="https://amapvoice.github.io/PilotTTS/">Demos</a>
 </p>
 
 
 ## News 📝
 
-<<<<<<< HEAD
 - **[Coming Soon]** Expanding support for 14+ dialects, with model weights to be released soon
-=======
-
->>>>>>> 8e0dab6828b63ad1d387d1b4fabf002972c775c8
 - **[2026.05]** Release Pilot-TTS base and instruct model weights
 
 ## Highlight 🔥
