@@ -52,11 +52,11 @@ pip install -r requirements.txt
 ```python
 # ModelScope
 from modelscope import snapshot_download
-snapshot_download('xxx/Pilot-TTS', local_dir='pretrained_models/')
+snapshot_download('AmapVoice/PilotTTS', local_dir='pretrained_models/')
 
 # HuggingFace
 from huggingface_hub import snapshot_download
-snapshot_download('xxx/Pilot-TTS', local_dir='pretrained_models/')
+snapshot_download('AmapVoice/PilotTTS', local_dir='pretrained_models/')
 ```
 
 包含：`pilot_tts.pt`、`pilot_tts_instruct.pt` 和 `tokenizer/`。
