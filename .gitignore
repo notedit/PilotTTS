@@ -27,3 +27,6 @@ output/
 # Large model files
 pretrained_models/
 .DS_Store
+
+
+.claude
