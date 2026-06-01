@@ -36,6 +36,9 @@ class InferenceEngine:
             w2v_stats_path=cfg.get("w2v_stats_path", ""),
             use_conditioning=True,
             use_spk_emb=True,
+            # inference-only: skip Qwen3 backbone weight load — the trained
+            # PilotTTS checkpoint below overwrites every LLM param anyway.
+            init_from_pretrained=False,
         )
 
         self.model.lock = threading.Lock()
@@ -66,8 +69,12 @@ class InferenceEngine:
         )
 
     def _load_vocoder(self):
+        # vocoder_only=True: skip Qwen2Encoder/llm.pt/CosyVoice-BlankEN loading —
+        # PilotTTS produces speech tokens via its own AR model, so the CosyVoice LLM
+        # stack is unused and its weights can be deleted from the model dir.
         self.cosyvoice = AutoModel(
-            model_dir=self.config["vocoder"]["model_dir"]
+            model_dir=self.config["vocoder"]["model_dir"],
+            vocoder_only=True,
         )
 
     def ar_inference(self, text, spk_emb, prompt_audio, language=None):

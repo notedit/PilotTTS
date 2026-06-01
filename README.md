@@ -65,14 +65,6 @@ This includes: `pilot_tts.pt`, `pilot_tts_instruct.pt`, and `tokenizer/`.
 
 Download the following dependencies from their respective open-source projects:
 
-```python
-from modelscope import snapshot_download
-
-# Qwen3-0.6B (LLM backbone)
-snapshot_download('Qwen/Qwen3-0.6B', local_dir='pretrained_models/Qwen3-0.6B')
-
-# CosyVoice3 (flow-matching vocoder, includes campplus.onnx)
-snapshot_download('FunAudioLLM/Fun-CosyVoice3-0.5B-2512', local_dir='pretrained_models/CosyVoice3-0.5B')
 ```
 
 ```python

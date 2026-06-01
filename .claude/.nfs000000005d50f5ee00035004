@@ -1,0 +1,12 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(python *)",
+      "Bash(python3 *)",
+      "Read(//opt/conda/**)",
+      "Bash(conda env *)",
+      "Bash(/mnt/nas5/libowen/miniforge/envs/cosy_qwen3/bin/python --version)",
+      "Bash(/mnt/nas5/libowen/miniforge/envs/cosy_qwen3/bin/python -c \"import torch; print\\(torch.__version__, torch.cuda.is_available\\(\\)\\)\")"
+    ]
+  }
+}

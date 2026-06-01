@@ -186,34 +186,79 @@ class CosyVoice2(CosyVoice):
                 start_time = time.time()
 
 
+def _strip_top_level_key(yaml_text, key):
+    """Remove a top-level key block (`key:` + all its indented children) from a YAML
+    document, preserving the rest verbatim. Used to drop heavy blocks (e.g. `llm:`)
+    that would otherwise instantiate models requiring weights we don't intend to ship.
+    """
+    lines = yaml_text.splitlines(keepends=True)
+    out = []
+    in_block = False
+    prefix = key + ':'
+    for line in lines:
+        stripped = line.lstrip()
+        is_top_level = bool(line) and not line[0].isspace() and not stripped.startswith('#')
+        if is_top_level and (stripped.startswith(prefix + ' ') or stripped.rstrip('\n') == prefix or stripped.startswith(prefix + '\n')):
+            in_block = True
+            continue
+        if in_block:
+            if is_top_level:
+                in_block = False
+                out.append(line)
+            # else: still inside the block, skip
+        else:
+            out.append(line)
+    return ''.join(out)
+
+
 class CosyVoice3(CosyVoice2):
 
-    def __init__(self, model_dir, load_trt=False, load_vllm=False, fp16=False, trt_concurrent=1):
+    def __init__(self, model_dir, load_trt=False, load_vllm=False, fp16=False, trt_concurrent=1, vocoder_only=False):
+        """vocoder_only=True skips the LLM stack entirely (no llm: block in yaml, no
+        Qwen2Encoder instantiation, no llm.pt / CosyVoice-BlankEN required) — use this
+        when an external AR model produces speech tokens and CosyVoice3 is only used
+        for flow + hift vocoding.
+        """
         self.model_dir = model_dir
         self.fp16 = fp16
+        self.vocoder_only = vocoder_only
         if not os.path.exists(model_dir):
             model_dir = snapshot_download(model_dir)
         hyper_yaml_path = '{}/cosyvoice3.yaml'.format(model_dir)
         if not os.path.exists(hyper_yaml_path):
             raise ValueError('{} not found!'.format(hyper_yaml_path))
         with open(hyper_yaml_path, 'r') as f:
-            configs = load_hyperpyyaml(f, overrides={'qwen_pretrain_path': os.path.join(model_dir, 'CosyVoice-BlankEN')})
-        assert get_model_type(configs) == CosyVoice3Model, 'do not use {} for CosyVoice3 initialization!'.format(model_dir)
-        self.frontend = CosyVoiceFrontEnd(configs['get_tokenizer'],
+            yaml_text = f.read()
+        if vocoder_only:
+            # Drop the `llm:` block so Qwen2Encoder is never instantiated — this is
+            # what lets the user delete `CosyVoice-BlankEN/` and `llm.pt` safely.
+            yaml_text = _strip_top_level_key(yaml_text, 'llm')
+            qwen_path_override = ''  # unused once llm: is stripped; keep the ref resolvable
+        else:
+            qwen_path_override = os.path.join(model_dir, 'CosyVoice-BlankEN')
+        configs = load_hyperpyyaml(yaml_text, overrides={'qwen_pretrain_path': qwen_path_override})
+        if not vocoder_only:
+            assert get_model_type(configs) == CosyVoice3Model, 'do not use {} for CosyVoice3 initialization!'.format(model_dir)
+        # In vocoder_only mode the Qwen tokenizer should not be loaded (it would try to
+        # read CosyVoice-BlankEN); the frontend tolerates get_tokenizer=None.
+        frontend_get_tokenizer = None if vocoder_only else configs['get_tokenizer']
+        self.frontend = CosyVoiceFrontEnd(frontend_get_tokenizer,
                                           configs['feat_extractor'],
                                           '{}/campplus.onnx'.format(model_dir),
                                           '{}/speech_tokenizer_v3.onnx'.format(model_dir),
                                           '{}/spk2info.pt'.format(model_dir),
-                                          configs['allowed_special'])
+                                          configs.get('allowed_special', 'all'))
         self.sample_rate = configs['sample_rate']
         if torch.cuda.is_available() is False and (load_trt is True or fp16 is True):
             load_trt, fp16 = False, False
             logging.warning('no cuda device, set load_trt/fp16 to False')
-        self.model = CosyVoice3Model(configs['llm'], configs['flow'], configs['hift'], fp16)
-        self.model.load('{}/llm.pt'.format(model_dir),
+        llm_module = configs.get('llm')  # None when vocoder_only stripped the block
+        self.model = CosyVoice3Model(llm_module, configs['flow'], configs['hift'], fp16)
+        llm_ckpt = None if vocoder_only else '{}/llm.pt'.format(model_dir)
+        self.model.load(llm_ckpt,
                         '{}/flow.pt'.format(model_dir),
                         '{}/hift.pt'.format(model_dir))
-            
+
         if load_vllm:
             self.model.load_vllm('{}/vllm'.format(model_dir))
         if load_trt:

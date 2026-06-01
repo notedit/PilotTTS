@@ -39,13 +39,15 @@ from cosyvoice.utils.frontend_utils import contains_chinese, replace_blank, repl
 class CosyVoiceFrontEnd:
 
     def __init__(self,
-                 get_tokenizer: Callable,
+                 get_tokenizer,
                  feat_extractor: Callable,
                  campplus_model: str,
                  speech_tokenizer_model: str,
                  spk2info: str = '',
                  allowed_special: str = 'all'):
-        self.tokenizer = get_tokenizer()
+        # get_tokenizer may be None in vocoder-only mode (skips Qwen tokenizer load,
+        # which would otherwise require CosyVoice-BlankEN/).
+        self.tokenizer = get_tokenizer() if get_tokenizer is not None else None
         self.feat_extractor = feat_extractor
         self.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
         option = onnxruntime.SessionOptions()
@@ -73,6 +75,12 @@ class CosyVoiceFrontEnd:
             self.inflect_parser = inflect.engine()
 
     def _extract_text_token(self, text):
+        if self.tokenizer is None:
+            # vocoder-only mode: downstream callers (engine.vocoder_decode) never read
+            # the text-token fields from model_input, so return empty placeholders.
+            empty = torch.zeros((1, 0), dtype=torch.int32, device=self.device)
+            empty_len = torch.tensor([0], dtype=torch.int32, device=self.device)
+            return empty, empty_len
         if isinstance(text, Generator):
             logging.info('get tts_text generator, will return _extract_text_token_generator!')
             # NOTE add a dummy text_token_len for compatibility

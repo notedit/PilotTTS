@@ -3,7 +3,7 @@ from contextlib import nullcontext
 import torch
 import torch.nn.functional as F
 from torch import nn
-from transformers import AutoModelForCausalLM, SeamlessM4TFeatureExtractor
+from transformers import AutoConfig, AutoModelForCausalLM, SeamlessM4TFeatureExtractor
 
 from .utils import make_pad_mask, build_semantic_model
 from .sampling import ras_sampling
@@ -28,6 +28,7 @@ class AR(nn.Module):
         w2v_stats_path: str = "",
         use_conditioning: bool = True,
         use_spk_emb: bool = True,
+        init_from_pretrained: bool = True,
     ):
         super().__init__()
         self.audio_tokens = audio_tokens
@@ -35,7 +36,20 @@ class AR(nn.Module):
         self.use_conditioning = use_conditioning
         self.use_spk_emb = use_spk_emb
 
-        self.ar_decoder = AutoModelForCausalLM.from_pretrained(pretrain_path)
+        # init_from_pretrained=False skips loading the LLM backbone weights — only
+        # the architecture (config.json) is needed. Use this at inference time when
+        # the trained PilotTTS checkpoint will overwrite all LLM params anyway, so
+        # users can delete pretrained_models/Qwen3-0.6B/model.safetensors etc.
+        if init_from_pretrained:
+            self.ar_decoder = AutoModelForCausalLM.from_pretrained(pretrain_path)
+        else:
+            # from_pretrained's legacy default is fp32 (ignores config.torch_dtype),
+            # while from_config respects it (bf16 for Qwen3). Force fp32 so the
+            # checkpoint loads with the same dtype as the training-time path —
+            # otherwise the fp32 conformer/spk_emb inputs mismatch the bf16 LLM weights.
+            self.ar_decoder = AutoModelForCausalLM.from_config(
+                AutoConfig.from_pretrained(pretrain_path), torch_dtype=torch.float32,
+            )
         embed_dim = self.ar_decoder.model.embed_tokens.embedding_dim
 
         audio_embedding = nn.Embedding(
@@ -273,6 +287,7 @@ class PilotVoice(nn.Module):
         w2v_stats_path: str = "",
         use_conditioning: bool = True,
         use_spk_emb: bool = True,
+        init_from_pretrained: bool = True,
     ):
         super().__init__()
         self.ar = AR(
@@ -282,6 +297,7 @@ class PilotVoice(nn.Module):
             w2v_stats_path=w2v_stats_path,
             use_conditioning=use_conditioning,
             use_spk_emb=use_spk_emb,
+            init_from_pretrained=init_from_pretrained,
         )
 
 

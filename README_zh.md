@@ -65,15 +65,6 @@ snapshot_download('xxx/Pilot-TTS', local_dir='pretrained_models/')
 
 从各自的开源项目下载以下依赖：
 
-```python
-from modelscope import snapshot_download
-
-# Qwen3-0.6B（LLM 骨干网络）
-snapshot_download('Qwen/Qwen3-0.6B', local_dir='pretrained_models/Qwen3-0.6B')
-
-# CosyVoice3（flow-matching 声码器，包含 campplus.onnx）
-snapshot_download('FunAudioLLM/Fun-CosyVoice3-0.5B-2512', local_dir='pretrained_models/CosyVoice3-0.5B')
-```
 
 ```python
 from huggingface_hub import snapshot_download
