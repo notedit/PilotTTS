@@ -111,18 +111,18 @@ if __name__ == "__main__":
         output_path="output/demo_paralanguage.wav",
     )
 
-    # ==================== 4. Dialect Synthesis (Instruct) ====================
-    print("\n" + "=" * 50)
-    print("[4] Dialect Synthesis (Henan)")
-    print("=" * 50)
+    # ==================== 4. Dialect Synthesis (Instruct) 马上开放方言模型 ====================
+#     print("\n" + "=" * 50)
+#     print("[4] Dialect Synthesis (Henan)")
+#     print("=" * 50)
 
-    synthesize(
-        engine_instruct,
-        text="中不中啊，咱俩一块儿去吃胡辣汤吧。",
-        prompt_wav=prompt_wav,
-        language="zh-henan",
-        output_path="output/demo_dialect_henan.wav",
-    )
+#     synthesize(
+#         engine_instruct,
+#         text="中不中啊，咱俩一块儿去吃胡辣汤吧。",
+#         prompt_wav=prompt_wav,
+#         language="zh-henan",
+#         output_path="output/demo_dialect_henan.wav",
+#     )
 
     del engine_instruct
     torch.cuda.empty_cache()

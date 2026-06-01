@@ -192,7 +192,7 @@ if __name__ == "__main__":
     parser.add_argument("--config", default="configs/infer_pilot_tts.yaml")
 
     parser.add_argument("--checkpoint", default="pretrained_models/pilot_tts.pt")
-    parser.add_argument("--port", type=int, default=9000)
+    parser.add_argument("--port", type=int, default=8090)
     parser.add_argument("--ui-only", action="store_true",
                         help="Launch UI without loading models (for frontend debugging)")
     args = parser.parse_args()
