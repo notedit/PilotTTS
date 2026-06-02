@@ -20,24 +20,28 @@ import gradio as gr
 from pilot_voice.engine import InferenceEngine
 
 UI_ONLY = False
-ENGINE = None
+ENGINE_BASE = None
+ENGINE_INSTRUCT = None
 
 
-def load_engine(config_path, checkpoint_path):
-    global ENGINE
+def _build_engine(config_path, checkpoint_path):
+    with open(config_path) as f:
+        config = yaml.safe_load(f)
+    if checkpoint_path:
+        config["checkpoint_path"] = checkpoint_path
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    return InferenceEngine(config, device)
+
+
+def load_engines(base_config, base_ckpt, instruct_config, instruct_ckpt):
+    global ENGINE_BASE, ENGINE_INSTRUCT
     if UI_ONLY:
         print("[UI_ONLY] Skipping model loading")
         return
-
-    with open(config_path) as f:
-        config = yaml.safe_load(f)
-
-    if checkpoint_path:
-        config["checkpoint_path"] = checkpoint_path
-
-    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    ENGINE = InferenceEngine(config, device)
-    print("Model loaded successfully.")
+    ENGINE_BASE = _build_engine(base_config, base_ckpt)
+    print(f"Base model loaded: {base_ckpt}")
+    ENGINE_INSTRUCT = _build_engine(instruct_config, instruct_ckpt)
+    print(f"Instruct model loaded: {instruct_ckpt}")
 
 
 def tts_zero_shot(prompt_audio, target_text):
@@ -50,7 +54,7 @@ def tts_zero_shot(prompt_audio, target_text):
         return (24000, np.zeros(24000, dtype=np.float32))
 
     try:
-        codes, speech = ENGINE.synthesize(
+        codes, speech = ENGINE_BASE.synthesize(
             prompt_audio,
             target_text.strip(),
         )
@@ -80,7 +84,7 @@ def tts_instruct(prompt_audio, target_text, emotion, language):
     lang_param = language if language else None
 
     try:
-        codes, speech = ENGINE.synthesize(
+        codes, speech = ENGINE_INSTRUCT.synthesize(
             prompt_audio,
             text,
             language=lang_param,
@@ -189,9 +193,14 @@ body {background-color: #f5f7fb;}
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="PilotVoice WebUI")
-    parser.add_argument("--config", default="configs/infer_pilot_tts.yaml")
-
-    parser.add_argument("--checkpoint", default="pretrained_models/pilot_tts.pt")
+    parser.add_argument("--config", default="configs/infer_pilot_tts.yaml",
+                        help="Base model config (zero-shot tab)")
+    parser.add_argument("--checkpoint", default="pretrained_models/pilot_tts.pt",
+                        help="Base model checkpoint (zero-shot tab)")
+    parser.add_argument("--instruct-config", default="configs/infer_pilot_tts_instruct.yaml",
+                        help="Instruct model config (instruct tab)")
+    parser.add_argument("--instruct-checkpoint", default="pretrained_models/pilot_tts_instruct.pt",
+                        help="Instruct model checkpoint (instruct tab)")
     parser.add_argument("--port", type=int, default=8090)
     parser.add_argument("--ui-only", action="store_true",
                         help="Launch UI without loading models (for frontend debugging)")
@@ -201,7 +210,10 @@ if __name__ == "__main__":
         UI_ONLY = True
         print("== UI_ONLY mode: no model loaded ==")
     else:
-        load_engine(args.config, args.checkpoint)
+        load_engines(
+            args.config, args.checkpoint,
+            args.instruct_config, args.instruct_checkpoint,
+        )
 
     demo.queue(max_size=10, default_concurrency_limit=2).launch(
         server_name="0.0.0.0",
