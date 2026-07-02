@@ -116,6 +116,8 @@ def main():
     ap.add_argument("--min_sec", type=float, default=0.5)
     ap.add_argument("--num_threads", type=int, default=0,
                     help="每进程 CPU 线程数(0=onnxruntime 默认, 分片并行时务必设置)")
+    ap.add_argument("--resume", action="store_true",
+                    help="输出文件已存在时跳过其中已完成的 utt, 追加写(断点续跑)")
     args = ap.parse_args()
 
     if args.num_threads > 0:
@@ -124,13 +126,30 @@ def main():
     spk_emb_dir = Path(args.spk_emb_dir)
     spk_emb_dir.mkdir(parents=True, exist_ok=True)
 
+    # resume: 读旧输出, 丢掉被杀时写了一半的坏行, 重写后续跑
+    done = set()
+    if args.resume and Path(args.output).exists():
+        valid = []
+        for line in open(args.output):
+            try:
+                it = json.loads(line)
+                done.add(it["utt"])
+                valid.append(line)
+            except (json.JSONDecodeError, KeyError):
+                pass
+        with open(args.output, "w") as f:
+            f.writelines(valid)
+        print(f"[resume] {len(done)} utts already done, skipping")
+
     tokenizer = SpeechTokenizer(args.speech_tokenizer, args.device, args.num_threads)
     campplus = CampPlusExtractor(args.campplus, args.num_threads)
 
     n_ok, n_skip = 0, 0
-    with open(args.input) as fin, open(args.output, "w") as fout:
+    with open(args.input) as fin, open(args.output, "a" if done else "w") as fout:
         for line in tqdm(fin, desc="extract"):
             item = json.loads(line)
+            if item["utt"] in done:
+                continue
             try:
                 wav = load_wav_16k(item["wav"])
                 dur = wav.size(1) / 16000.0
@@ -149,6 +168,7 @@ def main():
 
                 item.update(codes=codes, spk_emb=str(emb_path), dur=round(dur, 3))
                 fout.write(json.dumps(item, ensure_ascii=False) + "\n")
+                fout.flush()  # 每条落盘, 被杀时最多丢当前这条
                 n_ok += 1
             except Exception as e:  # noqa: BLE001
                 n_skip += 1

@@ -12,8 +12,16 @@ TOKENIZER=${TOKENIZER:-pretrained_models/CosyVoice3-0.5B/speech_tokenizer_v3.onn
 CAMPPLUS=${CAMPPLUS:-pretrained_models/CosyVoice3-0.5B/campplus.onnx}
 DEVICE=${DEVICE:-cpu}
 
-WORK=$(mktemp -d "${TMPDIR:-/tmp}/prep_XXXX")
-trap 'rm -rf "$WORK"' EXIT
+# WORK 未设置: 一次性临时目录, 结束即清; WORK 设置: 持久化目录 + 断点续跑,
+# 被杀/断连后用同样命令重跑即可从已完成处继续(split 是确定性的, 分片不变)
+RESUME=""
+if [ -z "${WORK:-}" ]; then
+  WORK=$(mktemp -d "${TMPDIR:-/tmp}/prep_XXXX")
+  trap 'rm -rf "$WORK"' EXIT
+else
+  mkdir -p "$WORK"
+  RESUME="--resume"
+fi
 
 split -n l/$N -d --additional-suffix=.jsonl "$INPUT" "$WORK/shard_"
 
@@ -23,7 +31,7 @@ for f in "$WORK"/shard_*.jsonl; do
   OMP_NUM_THREADS=$THREADS "$PY" train/prepare_data.py \
     --input "$f" --output "${f%.jsonl}.out.jsonl" \
     --speech_tokenizer "$TOKENIZER" --campplus "$CAMPPLUS" \
-    --spk_emb_dir "$SPK_DIR" --device "$DEVICE" --num_threads "$THREADS" \
+    --spk_emb_dir "$SPK_DIR" --device "$DEVICE" --num_threads "$THREADS" $RESUME \
     > "${f%.jsonl}.log" 2>&1 &
   pids+=($!)
 done

@@ -35,3 +35,4 @@ pretrained_models/
 data/
 exp/
 .local/
+.config/
