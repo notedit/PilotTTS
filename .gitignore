@@ -30,3 +30,8 @@ pretrained_models/
 
 .claude
 .claude
+
+# Training data & experiment outputs
+data/
+exp/
+.local/

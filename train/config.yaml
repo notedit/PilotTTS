@@ -1,0 +1,49 @@
+# =============================================================
+# PilotTTS 训练配置(放在 repo 根目录, 以 repo 根为工作目录运行)
+# =============================================================
+
+language: "zh"
+
+model:
+  audio_tokens: 6563                 # 6561 FSQ + BOA(6561) + EOS(6562)
+  vocab_size: 6561                   # FSQ codebook 大小, 文本偏移 = vocab_size + 2
+  pretrain_path: "pretrained_models/Qwen3-0.6B"
+  w2v_path: "pretrained_models/w2v-bert-2.0"
+  w2v_stats_path: "pretrained_models/wav2vec2bert_stats.pt"   # compute_w2v_stats.py 产出
+  use_conditioning: true
+  use_spk_emb: true
+
+tokenizer:
+  path: "tokenizer"                  # repo 自带, Qwen3 tokenizer + <|zh|>/<|0.00|> 等扩展 token
+
+data:
+  train_manifest: "data/emilia/train.codes.jsonl"   # prepare_data.py 产出
+  val_manifest:   "data/emilia/val.codes.jsonl"
+  max_target_sec: 30.0               # 目标音频最长(FSQ 25Hz, 30s ≈ 750 token)
+  min_target_sec: 0.5
+  prompt_min_sec: 2.0                # conditioning prompt 裁剪范围
+  prompt_max_sec: 15.0               # 与推理侧 15s 截断对齐
+  num_workers: 8
+
+train:
+  stage: 1                           # 1: 冻结 LLM 主干, 只训 conditioner+embed+lm_head
+                                     # 2: 全量放开(从 stage1 ckpt resume)
+  batch_size: 8                      # 每卡; 有效 batch = batch_size * grad_accum * world_size
+  grad_accum: 4
+  lr: 1.0e-4                         # stage1 建议 1e-4, stage2 降到 1e-5 ~ 2e-5
+  weight_decay: 0.01
+  betas: [0.9, 0.95]
+  warmup_steps: 2000                 # 按 optimizer step 计(= grad_accum 个 micro-step 走 1 步)
+  max_steps: 200000                  # 按 micro-step 计(训练终止条件; log/val/save interval 同口径)
+  grad_clip: 1.0
+  bf16: true
+  gradient_checkpointing: false      # 显存吃紧时打开(stage2 建议开)
+  cond_dropout: 0.1                  # 按 batch 概率丢弃整个 conditioning 前缀,
+                                     # 提升无条件鲁棒性(对应 no_spkemb_conds 模式)
+  seed: 1234
+
+  log_interval: 50
+  val_interval: 2000
+  save_interval: 5000
+  save_dir: "exp/pilot_repro_stage1"
+  resume: ""                         # stage2 时填 stage1 的 ckpt 路径
