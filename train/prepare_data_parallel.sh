@@ -23,16 +23,18 @@ else
   RESUME="--resume"
 fi
 
-split -n l/$N -d --additional-suffix=.jsonl "$INPUT" "$WORK/shard_"
+# 输入/输出分片用不同后缀(.in.jsonl / .out.jsonl), 避免 resume 重跑时
+# "shard_*.jsonl" 这种宽泛 glob 把上一轮的输出当成新的输入分片重复处理
+split -n l/$N -d --additional-suffix=.in.jsonl "$INPUT" "$WORK/shard_"
 
 THREADS=${THREADS:-12}   # 每分片 CPU 线程数, 总占用 = N * THREADS, 注意给机上其他任务留核
 pids=()
-for f in "$WORK"/shard_*.jsonl; do
+for f in "$WORK"/shard_*.in.jsonl; do
   OMP_NUM_THREADS=$THREADS "$PY" train/prepare_data.py \
-    --input "$f" --output "${f%.jsonl}.out.jsonl" \
+    --input "$f" --output "${f%.in.jsonl}.out.jsonl" \
     --speech_tokenizer "$TOKENIZER" --campplus "$CAMPPLUS" \
     --spk_emb_dir "$SPK_DIR" --device "$DEVICE" --num_threads "$THREADS" $RESUME \
-    > "${f%.jsonl}.log" 2>&1 &
+    > "${f%.in.jsonl}.log" 2>&1 &
   pids+=($!)
 done
 
